@@ -1,110 +1,73 @@
+! Program made by Eline van de Voort, from a forked skeleton of Luuk Vischer
+! This program calculates the Hartree-Fock energy for a given molecule
+! The molecule is defined in the define_molecule subroutine
+! The atomic orbital basis is defined in the define_basis subroutine
+! The Hartree-Fock energy is calculated in the Fock_Matrix subroutine
+! The results are written to a file in the Output_txt subroutine
+
 program HartreeFock
+  use ao_basis
+  use compute_integrals
+  use diagonalization
+  use Input_Output
+  use Hatree_Fock
+  use molecular_structure
 
-   ! Demonstration program that can be used as a starting point
-   ! Lucas Visscher, March 2022
+  implicit none
 
-   use molecular_structure
-   use ao_basis
-   use compute_integrals
-   use diagonalization
+! Variable containing the molecular structure
+  type(molecular_structure_t) :: molecule
 
-     implicit none
+! Variable containing the atomic orbital basis
+  type(basis_set_info_t)      :: ao_basis
 
-     ! Variable containing the molecular structure
-     type(molecular_structure_t) :: molecule
-     ! Variable containing the atomic orbital basis
-     type(basis_set_info_t) :: ao_basis
+! Variables for molecular data
+  integer                      :: number_electrons, n_AO, n_occ,  n_atoms
+  integer                      :: mu, nu, i, kappa, lambda, j
+  integer, allocatable         :: atom(:) 
+  real(8)                      :: E_HF, E_repulsion
+  real(8), allocatable         :: coord(:,:), ao_integrals(:,:,:,:)
+  real(8), allocatable         :: F(:,:), V(:,:), T(:,:), S(:,:), C(:,:), eps(:), D(:,:)
 
-     ! Variable naming as in the description of the exercise
-     integer  :: n_AO, n_occ
-     integer  :: kappa, lambda
-     real(8)  :: E_HF
-     real(8), allocatable :: F(:,:),V(:,:),T(:,:),S(:,:), C(:,:), eps(:), D(:,:)
+! Definition of the molecule
+  call define_molecule(molecule, atom, coord, n_atoms, number_electrons)
+  
+  print*, 'Coordinate matrix:'
+  call PrintMatrix(coord)
 
-     ! The following large array can be eliminated when Fock matrix contruction is implemented
-     real(8), allocatable :: ao_integrals (:,:,:,:)
-   
-     ! Definition of the molecule
-     call define_molecule(molecule)
+! Definition of the GTOs
+  call define_basis(ao_basis, atom, coord, n_atoms)
+  n_AO = ao_basis%nao
+  n_occ = number_electrons / 2
 
-     ! Definition of the GTOs
-     call define_basis(ao_basis)
-     n_AO = ao_basis%nao
-   
-     ! Definition of the number of occupied orbitals
-     n_occ = 3 ! hardwired for this demonstration program, should be set via input
+! Allocate and compute the integrals for kinetic energy, potential energy and overlap matrix
+  allocate(S(n_AO, n_AO))
+  call compute_1e_integrals("OVL", ao_basis, ao_basis, S)
 
-     ! Compute the overlap matrix
-     allocate (S(n_AO,n_AO))
-     call   compute_1e_integrals ("OVL",ao_basis,ao_basis,S)
+  allocate(T(n_AO, n_AO))
+  call compute_1e_integrals("KIN", ao_basis, ao_basis, T)
 
-     ! Compute the kinetic matrix
-     allocate (T(n_AO,n_AO))
-     call   compute_1e_integrals ("KIN",ao_basis,ao_basis,T)
+  allocate(V(n_AO, n_AO))
+  call compute_1e_integrals("POT", ao_basis, ao_basis, V, molecule)
 
-     ! Compute the potential matrix
-     allocate (V(n_AO,n_AO))
-     call   compute_1e_integrals ("POT",ao_basis,ao_basis,V,molecule)
+! Initialize the Fock matrix (core Hamiltonian)
+  allocate(F(n_AO, n_AO))
+  F = T - V
 
-     ! Compute the core Hamiltonian matrix (the potential is positive, we scale with -e = -1 to get to the potential energy matrix)
-     allocate (F(n_AO,n_AO))
-     F = T - V
+! Allocate space for orbital coefficients, density matrix, atomic orbital integrals, orbital energies
+  allocate(C(n_AO, n_AO))
+  allocate(D(n_AO, n_AO))
+  allocate(ao_integrals(n_AO, n_AO, n_AO, n_AO))
+  allocate (eps(n_AO))
 
-     ! Diagonalize the Fock matrix
-     allocate (C(n_AO,n_AO))
-     allocate (eps(n_AO))
-     call solve_genev (F,S,C,eps)
-     print*, "Orbital energies for the core Hamiltonian:",eps
+! Call Fock_Matrix subroutine from Hatree_Fock module
+  call Fock_Matrix(molecule, ao_basis, E_HF, E_repulsion, F, V, T, S, C, eps, D, ao_integrals, n_AO, n_occ, n_atoms)
 
-     ! Form the density matrix
-     allocate (D(n_AO,n_AO))
-     do lambda = 1, n_ao
-        do kappa = 1, n_ao
-           D(kappa,lambda) = sum(C(kappa,1:n_occ)*C(lambda,1:n_occ))
-       end do
-     end do
+! Output the results to a file
+  call Output_txt(E_HF, E_repulsion, n_atoms, atom, coord)
 
-     ! Compute the Hartree-Fock energy (this should be modified, see the notes)
-     E_HF = 2.D0 * sum(F*D)
-     allocate (ao_integrals(n_AO,n_AO,n_AO,n_AO))
-     ! Compute all 2-electron integrals
-     call generate_2int (ao_basis,ao_integrals)
-     do lambda = 1, n_ao
-        do kappa = 1, n_ao
-           E_HF = E_HF + 2.D0 *  D(kappa,lambda) * sum(D*ao_integrals(:,:,kappa,lambda))
-           E_HF = E_HF - 1.D0 *  D(kappa,lambda) * sum(D*ao_integrals(:,lambda,kappa,:))
-       end do
-     end do
-   
-     print*, "The Hartree-Fock energy:    ", E_HF
+  print*, "Number of atomic orbitals: ", n_AO
+  Print*, "Nuclear repulsion Energy: ", E_repulsion, " Hartree"
+  print*, "Final Hartree-Fock Energy: ", E_HF, " Hartree"
 
-   end
-
-   subroutine define_molecule(molecule)
-     ! This routine should be improved such that an arbitrary molecule can be given as input
-     ! the coordinates below are for a be-he dimer oriented along the x-axis with a bond length of 2 au
-     use molecular_structure
-     type(molecular_structure_t), intent(inout) :: molecule
-     real(8) :: charge(2),coord(3,2)
-     charge(1)   = 4.D0
-     charge(2)   = 2.D0
-     coord       = 0.D0
-     coord(1,2)  = 2.D0
-     call add_atoms_to_molecule(molecule,charge,coord)
-   end subroutine
-
-   subroutine define_basis(ao_basis)
-    ! This routine can be extended to use better basis sets 
-    ! The coordinates of the shell centers are the nuclear coordinates
-    ! Think of a refactoring of define_molecule and define_basis to ensure consistency 
-     use ao_basis
-     type(basis_set_info_t), intent(inout) :: ao_basis
-     type(basis_func_info_t) :: gto
-     ! Be:  2 uncontracted s-funs:    l      coord          exp      
-     call add_shell_to_basis(ao_basis,0,(/0.D0,0.D0,0.D0/),4.D0)
-     call add_shell_to_basis(ao_basis,0,(/0.D0,0.D0,0.D0/),1.D0)
-     ! He:  1 uncontracted s-fun:     l      coord          exp      
-     call add_shell_to_basis(ao_basis,0,(/2.D0,0.D0,0.D0/),1.D0)
-   end subroutine
-
-   
+end program HartreeFock
