@@ -1,0 +1,8 @@
+# Eline van de Voort, march 2025
+# Molecule = BeHe
+n= 2
+number_of_electrons= 6
+
+Atoms charge  coordinates(x,y,z)
+Be     4.0   0.00000 0.00000 0.00000
+He    2.0   2.00000 0.00000 0.00000

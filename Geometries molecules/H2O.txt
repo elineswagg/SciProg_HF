@@ -1,0 +1,9 @@
+# Eline van de Voort, march 2025
+# Molecule = H2O
+n= 3
+number_of_electrons= 10
+
+Atoms charge  coordinates(x,y,z)
+O     8.0   0.0000	0.0000	0.1173
+H     1.0   0.0000	0.7572	-0.4692
+H     1.0   0.0000	-0.7572	-0.4692

@@ -1,0 +1,9 @@
+# Eline van de Voort, march 2025
+# Molecule = BeF2
+n= 3
+number_of_electrons= 22
+
+Atoms charge  coordinates(x,y,z)
+Be    4.0   0.0000	0.0000	0.0000
+F     9.0   0.0000	0.0000	1.4000
+F     9.0   0.0000	0.0000	-1.4000

@@ -1,0 +1,8 @@
+# Eline van de Voort, march 2025
+# Molecule = dihydrogen
+n= 2
+number_of_electrons= 2
+
+Atoms charge  coordinates(x,y,z)
+H     1.0    0.0000	0.0000	0.0000
+H     1.0    0.0000	0.0000	0.7414
