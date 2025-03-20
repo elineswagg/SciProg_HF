@@ -1,2 +1,2 @@
 # SciProg_HF
-Skeleton Hartree Fock program for teaching purposes
+The program HatreeFock, is used for solving the eigenvalue problems with the aid of libraries to compute integrals over Gaussian basis functions.
