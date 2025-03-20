@@ -1,0 +1,110 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[a4paper,width=150mm,top=25mm,bottom=25mm]{geometry}% geometry etc
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath, amsthm, amssymb, amsfonts} %handy
+\usepackage{graphicx} %for images
+\usepackage{subcaption} %nice supcaption
+\usepackage{enumitem} %nice enumerate 
+\usepackage{siunitx} %for units
+\usepackage{gensymb} %for certain comments
+\usepackage{verbatim} %for comments 
+\usepackage[citestyle = numeric-comp, style = chem-acs, sorting = none, url=true]{biblatex} %to use .bib files for references
+\addbibresource{library.bib} %define source
+
+\title{\vspace{-3.5cm}\noindent\rule{\textwidth}{1pt}\vspace{3mm} \textsc{Documentation in Fortran: \\ \vspace{0.5cm} \Huge Hatree Fock program}}
+\date{}
+\begin{document}
+
+\maketitle
+\thispagestyle{empty}
+\vspace{-1.5cm}
+\noindent\rule{\textwidth}{1pt}
+% \vspace{.4cm}
+\section*{Introduction}
+The program HatreeFock, is used for solving the eigenvalue problems with the aid of libraries to compute integrals over Gaussian basis functions. The Hartree-Fock method is used to approximate the solution of many-body electron problems in atoms, molecules, and solids. It determines the best Slater determinant of single-particle states by finding the expectation value of the energy that is stationary with respect to variations in the single-particle orbitals. \\
+\hspace*{2em}  In this program, we start by constructing and solving the eigenvalue problem for the core Hamiltonian. From the resulting eigenvectors, we compute the density matrix by selecting those corresponding to the lowest energy states. Using this density matrix, we then construct the Fock matrix, which ensures the electrons are indistinguishable and are therefore associated with every orbital. \\
+\hspace*{2em}  Once the Fock matrix is built, it is diagonalized to obtain the natural atomic orbital (NAO) eigenvalues and eigenvectors. The process is iterated, updating the density matrix and refining the Fock matrix, until convergence is reached. If convergence is not achieved, these steps are repeated. Upon reaching convergence, or if a maximum number of iterations is exceeded, the final Hartree-Fock energy is computed.
+
+
+\section*{Technical Specification}
+
+\subsection*{Variable}
+\begin{itemize}
+    \item \textbf{Integer:} NOA, NOcc, NE \texttt{->} Number of atomic orbitals, occupied orbitals, electrons
+    \item \textbf{Real (8) allocatable:} S(:,:), H\_core(:,:), F(:,:), C(:,:), D(:,:) \texttt{->} Matrices for overlap, core Hamiltonian, Fock matrix, molecular orbitals, and density matrix
+    \item \textbf{Real(8), allocatable:} exponents(:), coeff(:,:) \texttt{->} basis function parameters
+    \item \textbf{Type(basis\_func\_info\_t):} \texttt{->} Used for atomic orbital basis functions
+    \item \textbf{Type(basis\_set\_info\_t):} \texttt{->} Used for basis set
+\end{itemize}
+
+\subsection*{Module}
+\begin{itemize}
+    \item \textbf{InputOutput} \texttt{->} Reads molecular structure and basis
+    \item \textbf{ao\_basis} \texttt{->} Generates the molecular orbitals
+    \item \textbf{diagonalization} \texttt{->} Solves eigenvalue problems
+    \item \textbf{molecular\_structure} \texttt{->} Generate atomic positions
+    \item \textbf{compute\_integrals} \texttt{->} Solves for one- and two-electron integrals
+    \item \textbf{Hartree-Fock} \texttt{->} This module contains the subroutine Fock_Matrix which computes the Hartree-Fock energy of a molecule using the SCF procedure. The subroutine takes 
+    as input the molecular structure, the atomic orbital basis, and the integrals for the kinetic energy, potential energy, and overlap matrix. It returns the Hartree-Fock energy and the nuclear repulsion energy. 
+\end{itemize}
+
+\subsection*{Subroutines}
+\begin{itemize}
+    \item \textbf{Define\_basis} \texttt{->} Defines the basis set of the molecule where
+    \item \textbf{Define\_molecule} \texttt{->} An arbitrary molecule can be given as input to generate the molecule
+    \item \textbf{Clear\_gto} \texttt{->} Clears allocated memory for exponents and coefficients of atomic orbitals.
+    \item \textbf{Clear\_basis} \texttt{->} Clears allocated memory for the basis set
+    \item \textbf{Add\_shells\_to\_basis} \texttt{->} Adds a new set of basis functions to the basis set
+    \item \textbf{Solve\_genev} \texttt{->} Transform the eigenvectors to the original non-orthogonal basis
+    \item \textbf{Diagonalize} \texttt{->} Diagonalize matrix and generates the eigenvalues and eigenvectors
+    \item \textbf{Add\_atoms\_to\_molecule} \texttt{->} Adds input charge and coordinates to molecule
+    \item \textbf{Compute\_1e\_integral} \texttt{->} Computes one electron integrals depending on property (Overlap, Kinetic or Potential Energy)
+    \item \textbf{Generate\_2int} \texttt{->} Generates all two electron integrals for basis set
+    \item \textbf{Compute\_2e\_integral} \texttt{->} Computes two electron integrals for given angular momentum, exponents and coordinates of the basis functions
+    \item \textbf{Set\_powers} \texttt{->} Define Cartesian Gaussian functions such that the order is the same as used with InteRest
+    \item \textbf{Fox\_matrix} \texttt{->} Computes the Fock energy 
+
+\end{itemize}
+
+\subsection*{Libraries (used in compute\_integrals)}
+\begin{itemize}
+    \item \textbf{InteRest} \texttt{->} Computes 2e integrals (e-e interactions)
+    \item \textbf{Gen1int} \texttt{->} Computes 1e integrals
+\end{itemize}
+
+\subsection*{Function}
+\begin{itemize}
+    \item \textbf{N\_ang} \texttt{->} Computes the number of Gaussian type orbitals in a block
+\end{itemize}
+
+\section*{User Input}
+\subsection*{Example Manual}
+The user can find in the Geometries molecule folder a few example molecules and their coordinates, charges, number of electrons and type. One of these can then be selected and copied in the molecule.txt file, which is not in any folder but in the main directory. Once the preferred molecule is selected, the program can be run with the command "./myapp". Once this is done an output txt file is made containing the desired output. 
+
+See here also an example of how the molecule.txt file can be generated so any other molecule besides the ones in geometries molecule folder can be made manually. \\
+\\
+\# Eline van de Voort, march 2025 \\
+\# Molecule = dihydrogen \\
+n= 2 \\
+number\_of\_electrons= 2 \\
+\\
+Atoms charge  coordinates(x,y,z) \\
+H     1.0    0.0000	0.0000	0.0000 \\
+H     1.0    0.0000	0.0000	0.7414 \\
+
+
+\subsection*{Expected Input}
+The main program reads user input:
+\begin{itemize}
+    \item \textbf{Number\_electrons} \texttt{ ->} Number of electrons
+    \item \textbf{Atom} \texttt{ ->} Type of atom
+    \item \textbf{Charge} \texttt{ ->} Charge per atom
+    \item \textbf{Coordinates} \texttt{ ->} Atomic coordinates
+    \item \textbf{N\_atoms} \texttt{ ->} number of atoms
+\end{itemize}
+
+\subsection*{Expected Output}
+\begin{itemize}
+    \item \textbf{Converged Hartree-Fock energy (E\_HF)} \texttt{->} The converged Hartree-Fock energy
+\end{itemize}
+\end{document}
