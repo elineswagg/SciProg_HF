@@ -8,7 +8,7 @@ module Hatree_Fock
   public Fock_Matrix
 
   contains
-    subroutine Fock_Matrix(molecule, ao_basis, E_HF, E_repulsion, F, V, T, S, C, eps, D, ao_integrals, n_AO, n_occ, n_atoms)
+    subroutine Fock_Matrix(molecule, ao_basis, E_HF, E_repulsion, F, V, T, S, C, eps, D, ao_integrals, n_AO, n_occ, n_atoms, cycles)
       use molecular_structure
       use ao_basis
       use compute_integrals
@@ -19,8 +19,10 @@ module Hatree_Fock
       type(basis_set_info_t), intent(in)      :: ao_basis
       real(8), intent(out)                    :: E_HF, E_repulsion
       integer, intent(in)                     :: n_AO, n_occ, n_atoms
-      integer                                 :: lambda, kappa, i, j, mu, nu
-      real(8)                                 :: E_HF_new, delta_E, r
+      integer, intent(out)                    :: cycles
+      integer                                 :: lambda, kappa, i, j, mu, nu, cy
+      real(8)                                 :: E_HF_new, delta_E, r, commutator_norm
+      real(8), allocatable                    :: commutator(:,:)
       real(8), allocatable, intent(inout)     :: ao_integrals(:,:,:,:)
       real(8), allocatable, intent(inout)     :: F(:,:), V(:,:), T(:,:), S(:,:), C(:,:), eps(:), D(:,:)
 
@@ -29,7 +31,7 @@ module Hatree_Fock
       E_HF = 0.D0
 
     ! SCF iteration loop
-      do
+      do cy = 1, 1000
         call solve_genev(F, S, C, eps)
 
       ! Construct the density matrix
@@ -62,15 +64,24 @@ module Hatree_Fock
           end do
         end do
       
-      ! Check convergence
-        delta_E = abs(E_HF_new - E_HF)
-        if (delta_E < 1.0e-9) then
+        allocate(commutator(n_AO, n_AO))
+        commutator = matmul(F, matmul(D, S)) - matmul(S, matmul(D, F))
+        commutator = commutator**2
+        commutator_norm = sqrt(sum(commutator))
+
+        if (commutator_norm < 1.0e-9) then
+          print *, "Density matrix converged at: ", commutator_norm
+          print *, "SCF converged in ", cy, " cycles."
+          cycles = cy
           exit
+        else if (cy == 1000) then
+          print *, "SCF did not converge in 1000 cycles."
+          stop
         end if
+        deallocate(commutator)
+
         E_HF = E_HF_new
       end do
-
-      deallocate(eps)
 
     ! Compute nuclear repulsion energy
       E_repulsion = 0.D0
@@ -80,7 +91,6 @@ module Hatree_Fock
           E_repulsion = E_repulsion + (molecule%charge(i) * molecule%charge(j) / r )
         end do
       end do
-
     ! Final Hartree-Fock energy
       E_HF = E_HF + E_repulsion
 

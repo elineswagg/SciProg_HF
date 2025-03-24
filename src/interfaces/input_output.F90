@@ -107,12 +107,18 @@ module Input_Output
          end do
      end subroutine PrintMatrix
 
-     subroutine Output_txt(E_HF, E_repulsion, n_atoms, atom, coord)
+     subroutine Output_txt(E_HF, E_repulsion, n_atoms, coord, cycles, atom, n_AO, n_occ, eps)
+      use ao_basis
       implicit none
-      real(8), intent(in) :: E_HF, E_repulsion, coord(3, n_atoms)
-      integer, intent(in) :: n_atoms, atom(n_atoms)
-      integer             :: i
-      logical             :: exists
+      real(8), intent(in)                     :: E_HF, E_repulsion, coord(3, n_atoms), eps(n_AO)
+      type(basis_set_info_t)                  :: ao_basis
+      type(basis_func_info_t)                 :: gtos
+      integer, intent(in)                     :: n_atoms, cycles, atom(n_atoms), n_AO, n_occ
+      integer                                 :: i, info, j
+      real(8)                                 :: charge(n_atoms), temp_coord(3), tolerance
+      logical                                 :: exists
+      character(len=100)                      :: dummy, atom_str
+      real(8)                                 :: homo_energy, homo_minus1_energy, lumo_energy, homo_lumo_gap, homo1_lumo_gap
 
       ! Delete the file if it exists
       inquire(file="hartree_fock_energy.txt", exist=exists)
@@ -122,16 +128,111 @@ module Input_Output
 
       ! Open a file to write the Hartree-Fock energy, overwriting if it exists
       open(unit=10, file="hartree_fock_energy.txt", status="replace", action="write")
-
-      ! Write the Hartree-Fock energy to the file
+      ! Write a first line to the file
       write(10, '(A)') "! This file contains the final Hartree-Fock energy"
+
+      write(10, '(A)') " "
+
+      ! Write the coordinates of the molecule to the file
       write(10, '(A)') "Coordinates of molecule:"
-      do i = 1, n_atoms
-         write(10, '(I5, 3F12.6)') atom(i), coord(1, i), coord(2, i), coord(3, i)
+      open(unit=11, file="molecule.txt", action="read")
+      do i = 1, 5
+         read(11, *) dummy
       end do
+
+      do i = 1, n_atoms
+         read(11, *, iostat=info) atom_str, charge(i), temp_coord
+         if (info /= 0) then
+         print*, "Error reading data at row:", i
+         stop "Error reading molecule data"
+         end if
+         write(10, '(A5, 3F12.6)') trim(atom_str), coord(1, i), coord(2, i), coord(3, i)
+      end do
+      close(11)
+
+      write(10, '(A)') " "
+
+      ! Write the number of atomic orbitals, occupied orbitals, cycles and energies to the file
+      write(10, '(A, I5, A)') "Number of atoms:               ", n_atoms, " atoms"
+      write(10, '(A, I5, A)') "Number of atomic orbitals:      ", n_AO, " orbitals"
+      write(10, '(A, I5, A)') "Number of occupied orbitals:   ", n_occ, " orbitals"
+      write(10, "(A, I5, A)") "Number of cycles:               ", cycles, " cycles"
+      write(10, '(A, F6.2, A)') "Nuclear repulsion Energy:         ", E_repulsion, " Hartree"
+      write(10, '(A, F6.2, A)') "Final Hartree-Fock Energy:        ", E_HF, " Hartree"
+
+      ! Write the HOMO, LUMO and HOMO-1 energies to file
+      write(10, '(A)') " "
+      write(10, '(A)') "HOMO, LUMO and HOMO-1 energies:  "
+
+      homo_energy = eps(n_occ)
+
+      ! take into accound degeracy
+      tolerance = 0.01
+      if (abs(homo_energy - eps(n_occ - 1)) < tolerance) then
+         if (abs(homo_energy - eps(n_occ - 2)) < tolerance) then
+         homo_minus1_energy = eps(n_occ - 3)
+         else
+         homo_minus1_energy = eps(n_occ - 2)
+         end if
+      else
+         homo_minus1_energy = eps(n_occ - 1)
+      end if
+
+      if (abs(homo_energy - eps(n_occ + 1)) < tolerance) then
+         if (abs(homo_energy - eps(n_occ + 2)) < tolerance) then
+         lumo_energy = eps(n_occ + 3)
+         else
+         lumo_energy = eps(n_occ + 2)
+         end if
+      else
+         lumo_energy = eps(n_occ + 1)
+      end if
+
+      write(10, "(A, F6.2, A)") 'HOMO energy:              ', homo_energy, " Hatree"
+      write(10, "(A, F6.2, A)") 'HOMO-1 energy:            ', homo_minus1_energy, " Hatree"
+      write(10, "(A, F6.2, A)") 'LUMO energy:              ', lumo_energy, " Hatree"
+      
+      homo_lumo_gap = lumo_energy - homo_energy
+      homo1_lumo_gap = lumo_energy - homo_minus1_energy
   
-      write(10, '(A, F12.6)') "Nuclear repulsion Energy: ", E_repulsion
-      write(10, '(A, F12.6)') "Final Hartree-Fock Energy: ", E_HF
+      write(10, "(A, F6.2, A)") "Ionization Potential (IP):", -homo_energy, " Hatree"
+      write(10, "(A, F6.2, A)") "Electron Affinity (EA):   ", lumo_energy, " Hatree"
+      write(10, "(A, F6.2, A)") "HOMO-LUMO Gap:            ",  homo_lumo_gap, " Hatree"
+      write(10, "(A, F6.2, A)") "HOMO-1 to LUMO Gap:       ", homo1_lumo_gap, " Hatree"
+
+      ! Loop through each basis function and print its details
+      write(10, '(A)') " "
+      write(10, '(A)') "  ----------------------------------------------------"
+      write(10, '(A)') "Basis set details:"
+      do i = 1, n_atoms
+         if (atom(i) == 1) then
+         write(10, '(A)') "H:  3 uncontracted s-functions:"
+         write(10, '(A, 3F12.6)') "  l=0, coordinates=", coord(1, i), coord(2, i), coord(3, i)
+         write(10, '(A, F12.6)') "    exp=", 0.1D0
+         write(10, '(A, F12.6)') "    exp=", 1.D0
+         write(10, '(A, F12.6)') "    exp=", 3.D0
+         else
+         write(10, '(A)') " "
+         write(10, '(A)') "Non-Hydrogen element:"
+         write(10, '(A, 3F12.6)') "  l=0, coordinates=", coord(1, i), coord(2, i), coord(3, i)
+         write(10, '(A, F12.6)') "    exp=", 0.1D0
+         write(10, '(A, F12.6)') "    exp=", 0.35D0
+         write(10, '(A, F12.6)') "    exp=", 1.D0
+         write(10, '(A, F12.6)') "    exp=", 3.D0
+         write(10, '(A, F12.6)') "    exp=", 10.D0
+
+         write(10, '(A)') "  l=1, "
+         write(10, '(A, F12.6)') "    exp=", 0.2D0
+         write(10, '(A, F12.6)') "    exp=", 1.D0
+         write(10, '(A, F12.6)') "    exp=", 5.D0
+
+         write(10, '(A)') "  l=2, "
+         write(10, '(A, F12.6)') "    exp=", 1.D0
+         end if
+      end do
+      write(10, '(A)') "  ----------------------------------------------------"
+      write(10, '(A)') " "
+
 
       ! Close the file
       close(10)
