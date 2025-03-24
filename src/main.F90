@@ -23,7 +23,7 @@ program HartreeFock
 
 ! Variables for molecular data
   integer                      :: number_electrons, n_AO, n_occ,  n_atoms
-  integer                      :: mu, nu, i, kappa, lambda, j
+  integer                      :: mu, nu, i, kappa, lambda, j, cycles
   integer, allocatable         :: atom(:) 
   real(8)                      :: E_HF, E_repulsion
   real(8), allocatable         :: coord(:,:), ao_integrals(:,:,:,:)
@@ -58,13 +58,13 @@ program HartreeFock
   allocate(C(n_AO, n_AO))
   allocate(D(n_AO, n_AO))
   allocate(ao_integrals(n_AO, n_AO, n_AO, n_AO))
-  allocate (eps(n_AO))
+  allocate(eps(n_AO))
 
 ! Call Fock_Matrix subroutine from Hatree_Fock module
-  call Fock_Matrix(molecule, ao_basis, E_HF, E_repulsion, F, V, T, S, C, eps, D, ao_integrals, n_AO, n_occ, n_atoms)
+  call Fock_Matrix(molecule, ao_basis, E_HF, E_repulsion, F, V, T, S, C, eps, D, ao_integrals, n_AO, n_occ, n_atoms, cycles)
 
 ! Output the results to a file
-  call Output_txt(E_HF, E_repulsion, n_atoms, atom, coord)
+  call Output_txt(E_HF, E_repulsion, n_atoms, coord, cycles, atom, n_AO, n_occ, eps)
 
   print*, "Number of atomic orbitals: ", n_AO
   Print*, "Nuclear repulsion Energy: ", E_repulsion, " Hartree"
