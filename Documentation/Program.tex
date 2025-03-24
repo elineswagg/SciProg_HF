@@ -44,8 +44,7 @@ The program HatreeFock, is used for solving the eigenvalue problems with the aid
     \item \textbf{diagonalization} \texttt{->} Solves eigenvalue problems
     \item \textbf{molecular\_structure} \texttt{->} Generate atomic positions
     \item \textbf{compute\_integrals} \texttt{->} Solves for one- and two-electron integrals
-    \item \textbf{Hartree-Fock} \texttt{->} This module contains the subroutine Fock_Matrix which computes the Hartree-Fock energy of a molecule using the SCF procedure. The subroutine takes 
-    as input the molecular structure, the atomic orbital basis, and the integrals for the kinetic energy, potential energy, and overlap matrix. It returns the Hartree-Fock energy and the nuclear repulsion energy. 
+    \item \textbf{Hartree-Fock} \texttt{->} Generates the Fox energy upon convergence
 \end{itemize}
 
 \subsection*{Subroutines}
@@ -81,8 +80,10 @@ The program HatreeFock, is used for solving the eigenvalue problems with the aid
 \subsection*{Example Manual}
 The user can find in the Geometries molecule folder a few example molecules and their coordinates, charges, number of electrons and type. One of these can then be selected and copied in the molecule.txt file, which is not in any folder but in the main directory. Once the preferred molecule is selected, the program can be run with the command "./myapp". Once this is done an output txt file is made containing the desired output. 
 
-See here also an example of how the molecule.txt file can be generated so any other molecule besides the ones in geometries molecule folder can be made manually. \\
-\\
+See here also an example of how the molecule.txt file can be generated so any other molecule besides the ones in geometries molecule folder can be made manually.
+
+\newpage
+input: \\
 \# Eline van de Voort, march 2025 \\
 \# Molecule = dihydrogen \\
 n= 2 \\
@@ -106,5 +107,8 @@ The main program reads user input:
 \subsection*{Expected Output}
 \begin{itemize}
     \item \textbf{Converged Hartree-Fock energy (E\_HF)} \texttt{->} The converged Hartree-Fock energy
+    \item \textbf{Number of cycles} \texttt{ ->} number of cycles it took to converge
+    \item \textbf{Basis set information} \texttt{ ->} exponent and l.
+    \item \textbf{HOMO & HOMO-1} \texttt{ ->} Heighest molecular orbital energy and minus 1 energy.
 \end{itemize}
 \end{document}
